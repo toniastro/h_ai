@@ -1,0 +1,79 @@
+version: '2'
+
+networks:
+  h_ai:
+    driver: bridge
+
+services:
+  db:
+    image: 'mongo:latest'
+    container_name: 'mongodb'
+    ports:
+      - '27100:27017'
+    restart: unless-stopped
+    networks:
+      - h_ai
+
+  redis2:
+    image: redis
+    container_name: 'redis2'
+    ports:
+    - "6379:6379"
+    networks:
+    - h_ai
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+      - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    networks:
+    - h_ai
+
+  consumer:
+    build: ./consumer
+    volumes:
+      - .:/go/src/app
+    ports:
+      - "8300:8300"
+    environment:
+      DATABASE_URL: mongodb://mongodb:27017/app_development
+      RABBIT_QUEUE_NAME: jobs
+      RABBIT_URL: amqp://guest:guest@rabbitmq:5672
+    restart: on-failure
+    links:
+      - rabbitmq
+      - db
+    depends_on:
+      - rabbitmq
+      - db
+    networks:
+      - h_ai
+
+  main:
+    build: ./api
+    volumes:
+      - .:/go/src/app
+    ports:
+      - "8100:8100"
+    environment:
+      PORT: 8100
+      RABBIT_QUEUE_NAME: jobs
+      REDIS_ADDRESS: redis2:6379
+      RABBIT_URL: amqp://guest:guest@rabbitmq:5672
+      DATABASE_URL: mongodb://mongodb:27017/app_development
+    links:
+      - redis2
+      - rabbitmq
+      - db
+    restart: on-failure
+    depends_on:
+      - db
+      - redis2
+      - rabbitmq
+    networks:
+      - h_ai
