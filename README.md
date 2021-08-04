@@ -1,6 +1,9 @@
 ## How to run the application
 There are 2 main services i.e (Api and consumer) service(s).
-Clone the application with `git clone https://github.com/toniastro/h_ai.git
+Clone the application with 
+`
+git clone https://github.com/toniastro/h_ai.git
+`
 
 ### Docker
 
